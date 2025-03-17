@@ -84,19 +84,26 @@ class ConfigManager:
     @property
     def ipv_type_prefer(self):
         return [
-            type.strip().lower()
-            for type in self.config.get(
-                "Settings", "ipv_type_prefer", fallback="auto"
+            ipv_type_value.lower()
+            for ipv_type in self.config.get(
+                "Settings", "ipv_type_prefer", fallback=""
             ).split(",")
+            if (ipv_type_value := ipv_type.strip())
         ]
 
     @property
     def ipv4_num(self):
-        return self.config.getint("Settings", "ipv4_num", fallback=15)
+        try:
+            return self.config.getint("Settings", "ipv4_num", fallback=5)
+        except:
+            return ""
 
     @property
     def ipv6_num(self):
-        return self.config.getint("Settings", "ipv6_num", fallback=15)
+        try:
+            return self.config.getint("Settings", "ipv6_num", fallback=5)
+        except:
+            return ""
 
     @property
     def ipv6_support(self):
@@ -105,6 +112,7 @@ class ConfigManager:
     @property
     def ipv_limit(self):
         return {
+            "all": self.urls_limit,
             "ipv4": self.ipv4_num,
             "ipv6": self.ipv6_num,
         }
@@ -112,13 +120,13 @@ class ConfigManager:
     @property
     def origin_type_prefer(self):
         return [
-            origin.strip().lower()
+            origin_value.lower()
             for origin in self.config.get(
                 "Settings",
                 "origin_type_prefer",
                 fallback="",
             ).split(",")
-            if origin.strip().lower()
+            if (origin_value := origin.strip())
         ]
 
     @property
@@ -140,6 +148,7 @@ class ConfigManager:
     @property
     def source_limits(self):
         return {
+            "all": self.urls_limit,
             "local": self.local_num,
             "hotel": self.hotel_num,
             "multicast": self.multicast_num,
@@ -329,6 +338,18 @@ class ConfigManager:
     def local_num(self):
         return self.config.getint("Settings", "local_num", fallback=10)
 
+    @property
+    def sort_duplicate_limit(self):
+        return self.config.getint("Settings", "sort_duplicate_limit", fallback=3)
+
+    @property
+    def cdn_url(self):
+        return self.config.get("Settings", "cdn_url", fallback="")
+
+    @property
+    def open_rtmp(self):
+        return self.config.getboolean("Settings", "open_rtmp", fallback=False)
+
     def load(self):
         """
         Load the config
@@ -337,12 +358,12 @@ class ConfigManager:
         user_config_path = resource_path("config/user_config.ini")
         default_config_path = resource_path("config/config.ini")
 
-        config_files = [user_config_path, default_config_path]
+        # user config overwrites default config
+        config_files = [default_config_path, user_config_path]
         for config_file in config_files:
             if os.path.exists(config_file):
                 with open(config_file, "r", encoding="utf-8") as f:
                     self.config.read_file(f)
-                break
 
     def set(self, section, key, value):
         """
@@ -365,13 +386,13 @@ class ConfigManager:
         with open(user_config_path, "w", encoding="utf-8") as configfile:
             self.config.write(configfile)
 
-    def copy(self):
+    def copy(self, path="config"):
         """
         Copy config files to current directory
         """
-        dest_folder = os.path.join(os.getcwd(), "config")
+        dest_folder = os.path.join(os.getcwd(), path)
         try:
-            src_dir = resource_path("config")
+            src_dir = resource_path(path)
             if os.path.exists(src_dir):
                 if not os.path.exists(dest_folder):
                     os.makedirs(dest_folder, exist_ok=True)
